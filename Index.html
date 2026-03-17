@@ -1,0 +1,448 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consistency</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:system-ui;
+}
+
+body{
+min-height:100vh;
+background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+color:white;
+display:flex;
+justify-content:center;
+align-items:flex-start;
+padding:20px;
+overflow-y:auto;
+}
+
+/* splash */
+
+#splash{
+position:fixed;
+inset:0;
+background:#0f0c29;
+display:flex;
+align-items:center;
+justify-content:center;
+z-index:999;
+font-size:28px;
+animation:fadeOut 1.5s forwards;
+animation-delay:1.2s;
+}
+
+@keyframes fadeOut{
+to{opacity:0;visibility:hidden}
+}
+
+/* main card */
+
+.app{
+width:92%;
+max-width:420px;
+background:rgba(255,255,255,0.05);
+backdrop-filter:blur(20px);
+border-radius:22px;
+padding:20px;
+border:1px solid rgba(255,255,255,0.15);
+box-shadow:0 10px 40px rgba(0,0,0,0.6);
+margin-bottom:80px;
+}
+
+/* title */
+
+h1{
+text-align:center;
+margin-bottom:15px;
+}
+
+/* habit */
+
+.habit{
+background:rgba(255,255,255,0.07);
+padding:15px;
+border-radius:14px;
+margin-bottom:12px;
+touch-action:pan-y;
+}
+
+/* streak */
+
+.streak{
+font-size:20px;
+margin:5px 0;
+animation:firePulse 2s infinite;
+}
+
+@keyframes firePulse{
+0%{transform:scale(1)}
+50%{transform:scale(1.08)}
+100%{transform:scale(1)}
+}
+
+/* buttons */
+
+button{
+border:none;
+padding:8px 12px;
+margin:5px;
+border-radius:10px;
+background:rgba(255,255,255,0.12);
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:rgba(255,255,255,0.2);
+}
+
+.done{
+background:linear-gradient(135deg,#00ffa6,#00e1ff);
+color:black;
+font-weight:bold;
+}
+
+.add{
+width:100%;
+margin-top:10px;
+background:linear-gradient(135deg,#00ffa6,#00e1ff);
+color:black;
+font-weight:bold;
+}
+
+/* heatmap */
+
+.heatmap{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:4px;
+margin-top:8px;
+}
+
+.day{
+aspect-ratio:1;
+background:#1c1c26;
+border-radius:4px;
+}
+
+.active{
+background:#00ffa6;
+box-shadow:0 0 6px #00ffa6;
+}
+
+/* bottom nav */
+
+.nav{
+position:fixed;
+bottom:0;
+left:0;
+right:0;
+background:#12121a;
+display:flex;
+justify-content:space-around;
+padding:10px;
+border-top:1px solid rgba(255,255,255,0.1);
+}
+
+.nav button{
+background:none;
+font-size:18px;
+}
+
+/* modal */
+
+.modal{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.7);
+display:none;
+align-items:center;
+justify-content:center;
+}
+
+.modal-content{
+background:#1b1b25;
+padding:20px;
+border-radius:16px;
+}
+
+.bigheat{
+display:grid;
+grid-template-columns:repeat(7,20px);
+gap:4px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="splash">🔥 Consistency</div>
+
+<div class="app">
+
+<h1>🔥 Consistency</h1>
+
+<div id="habits"></div>
+
+<button class="add" onclick="addHabit()">+ Add Habit</button>
+
+</div>
+
+<!-- bottom nav -->
+
+<div class="nav">
+
+<button onclick="scrollToTop()">🏠</button>
+<button onclick="showCalendar()">📅</button>
+<button onclick="reminder()">🔔</button>
+
+</div>
+
+<!-- modal -->
+
+<div class="modal" id="calendarModal">
+
+<div class="modal-content">
+
+<h3>Calendar</h3>
+
+<div class="bigheat" id="bigheat"></div>
+
+<button onclick="closeCalendar()">Close</button>
+
+</div>
+
+</div>
+
+<script>
+
+let habits = JSON.parse(localStorage.getItem("habits")) || []
+
+render()
+
+function render(){
+
+let container=document.getElementById("habits")
+container.innerHTML=""
+
+habits.forEach((h,i)=>{
+
+container.innerHTML+=`
+
+<div class="habit" 
+ontouchstart="touchStart(event,${i})"
+ontouchend="touchEnd(event,${i})">
+
+<h3>${h.name}</h3>
+
+<div class="streak">🔥 ${h.streak} days</div>
+
+<button class="done" onclick="done(${i})">✅ Done</button>
+
+<button onclick="resetHabit(${i})">❌ Reset</button>
+
+<button onclick="showCalendar()">📅 View Calendar</button>
+
+<div class="heatmap" id="heat${i}"></div>
+
+</div>
+
+`
+
+setTimeout(()=>drawHeatmap(i),10)
+
+})
+
+localStorage.setItem("habits",JSON.stringify(habits))
+
+}
+
+/* add habit */
+
+function addHabit(){
+
+let name=prompt("Enter habit name")
+
+if(!name)return
+
+habits.push({
+name:name,
+streak:0,
+last:0
+})
+
+render()
+
+}
+
+/* done */
+
+function done(i){
+
+let h=habits[i]
+let now=Date.now()
+
+if(now-h.last<86400000){
+alert("Already completed today!")
+return
+}
+
+h.streak++
+h.last=now
+
+confetti()
+
+render()
+
+}
+
+/* reset */
+
+function resetHabit(i){
+habits[i].streak=0
+habits[i].last=0
+render()
+}
+
+/* heatmap */
+
+function drawHeatmap(i){
+
+let container=document.getElementById("heat"+i)
+
+container.innerHTML=""
+
+for(let d=0;d<28;d++){
+
+let div=document.createElement("div")
+div.className="day"
+
+if(d<habits[i].streak){
+div.classList.add("active")
+}
+
+container.appendChild(div)
+
+}
+
+}
+
+/* swipe */
+
+let startX=0
+
+function touchStart(e){
+startX=e.changedTouches[0].screenX
+}
+
+function touchEnd(e,i){
+
+let endX=e.changedTouches[0].screenX
+
+if(startX-endX>80){
+resetHabit(i)
+}
+
+}
+
+/* confetti */
+
+function confetti(){
+
+for(let i=0;i<20;i++){
+
+let c=document.createElement("div")
+
+c.style.position="fixed"
+c.style.width="6px"
+c.style.height="6px"
+
+c.style.background="hsl("+Math.random()*360+",100%,60%)"
+
+c.style.left=Math.random()*100+"vw"
+c.style.top="-10px"
+
+document.body.appendChild(c)
+
+let fall=setInterval(()=>{
+
+let y=parseInt(c.style.top)
+c.style.top=y+5+"px"
+
+if(y>window.innerHeight){
+clearInterval(fall)
+c.remove()
+}
+
+},16)
+
+}
+
+}
+
+/* bottom nav */
+
+function scrollToTop(){
+window.scrollTo({top:0,behavior:"smooth"})
+}
+
+/* calendar modal */
+
+function showCalendar(){
+
+document.getElementById("calendarModal").style.display="flex"
+
+let big=document.getElementById("bigheat")
+big.innerHTML=""
+
+for(let i=0;i<90;i++){
+
+let d=document.createElement("div")
+d.className="day"
+
+if(i<habits[0]?.streak){
+d.classList.add("active")
+}
+
+big.appendChild(d)
+
+}
+
+}
+
+function closeCalendar(){
+document.getElementById("calendarModal").style.display="none"
+}
+
+/* reminder */
+
+function reminder(){
+
+if(Notification.permission!=="granted"){
+Notification.requestPermission()
+}else{
+
+new Notification("Consistency Reminder",{
+body:"Don't forget your habit today 🔥"
+})
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
+```
